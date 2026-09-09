@@ -93,6 +93,38 @@ Toggling a modality on a model whose capability comes from the provider catalog 
 
 对能力来自供应商目录的模型切换模态时，会先弹出确认：*「供应商声明此模型支持 X，您正在试图改为 Y，确定吗？」*
 
+### 「从供应商加载」/ Load from the provider
+
+Every `llm-pi-ai` route has a **从供应商加载** button. It asks the adapter which models that route can serve and lists them under the group, marking each one **已声明** (already in your document), **加入** (available to add), or **目录提供** (already served because the route lists no models of its own).
+
+每条 `llm-pi-ai` 路由都有一个 **从供应商加载** 按钮：向适配器询问该路由能提供哪些模型，列在分组下方，并标记 **已声明**（你文档里已有）、**加入**（可加入）、**目录提供**（该路由没有自己的列表，已由目录全部提供）。
+
+- For a route the adapter ships a catalog for, the answer is **local** — no network, no credential.
+  — 适配器自带目录的路由，答案在**本地**得出，不联网、不需要凭据。
+- For a hand-declared route (your own gateway or a local server such as LM Studio), the adapter appends `/models` to that route's `baseURL` and interrogates the endpoint, using the credential its `apiKeyEnv` names. The wait is bounded to 15 seconds and every failure is reported in the panel (unreachable, `401`/`403`, non-JSON, no `data` array).
+  — 手工声明的路由（你自己的网关，或 LM Studio 这类本地服务），适配器会在该路由的 `baseURL` 后拼 `/models` 去问那个端点，用 `apiKeyEnv` 指名的凭据；等待上限 15 秒，任何失败都在面板里说明（连不上、`401`/`403`、非 JSON、没有 `data` 数组）。
+- **The listing carries no input modalities** — the adapter does not expose them here. A joined model's real modalities appear once it is served, because that is when the catalog starts describing it.
+  — **清单里不含输入模态**——适配器不暴露。加入后的模型，要等它被服务（目录开始描述它）时真实模态才显示。
+- Joining writes a minimal `{ id }` entry, so the model keeps following the catalog instead of freezing its current values.
+  — 加入写入的是最小条目 `{ id }`，因此该模型继续跟随目录，而不是把当前值固化下来。
+
+### 「重置为默认参数」/ Reset parameters
+
+**重置为默认参数** appears on every route the adapter itself ships (DeepSeek 官方适配器, Opencode-Go, …) and resets **every model in that group** back to its default input modalities, context window, output cap and image budgets.
+
+**重置为默认参数** 出现在适配器自带的每条路由上（DeepSeek 官方适配器、Opencode-Go……），把该分组下**每个模型**的输入模态、上下文窗口、最大输出与图像预算恢复为默认值。
+
+- It **never** touches the model list or the display names. Which models exist is the shipped **Models** page's job; this page only configures models that exist.
+  — 它**绝不**动模型列表和显示名称。有哪些模型是官方 **模型** 页的职责；这一页只负责配置已存在的模型。
+- It is hidden for a hand-declared provider (for example a local server you added yourself), because there is no shipped default to fall back to.
+  — 对**手工添加的供应商**（例如你自己加的本地服务）不显示，因为没有自带默认值可回退。
+- It asks for confirmation first, then writes immediately.
+  — 点之前会确认，确认后立即写入。
+
+> **What counts as "hand-declared" is not "is it a relay".** The only question is whether pi-ai ships a catalog entry for that route. `opencode-go` is a relay too, but pi-ai knows it, so it has defaults. A relay, gateway or local server you wrote into `settings.yaml` yourself — its `baseURL`, `api` and model list typed by hand — is one pi-ai has never heard of, so it has none, and this page will not offer to reset it.
+>
+> **判断「手工声明」的标准不是「它是不是中转站」，而是 pi-ai 内置目录里有没有它。** `opencode-go` 本身也是中转站，但 pi-ai 认识它，所以有默认值；而你自己手写 `baseURL`、`api` 和模型清单加进 `settings.yaml` 的中转站、网关或本地服务，pi-ai 从没听说过它，就没有默认值，这一页也不会提供重置。
+
 ### Saving / 保存
 
 - Writes go through the official settings wire (`settings.mutate`) with the namespace revision, so a concurrent edit from another tab or an external `settings.yaml` edit is refused as a conflict instead of being overwritten.
@@ -128,6 +160,36 @@ Search by model id, display name or route name; filter by **全部 / 仅多模�
   — 本页只编辑模型条目。供应商的增删与 API 密钥录入仍由官方 **模型** 页负责。
 - Chinese UI strings are currently hard-coded.
   — 界面文案目前是中文硬编码。
+
+## Verification status / 验证情况
+
+This plugin was developed and checked against a local DSH install using the `web` profile. Verified end-to-end:
+
+本插件在本地 DSH 安装的 `web` profile 上开发并检查。**已验证跑通**的路径：
+
+- The plugin loads, the settings page appears between **Models** and **Plugins**, and both namespaces (`llm-deepseek`, `llm-pi-ai`) render with their effective capabilities.
+  — 插件加载、设置页出现在 **模型** 与 **插件** 之间，两个 namespace（`llm-deepseek`、`llm-pi-ai`）都能渲染出生效能力。
+- Editing a model's modalities / capacity / image budgets and saving; only the user layer and only changed fields are written.
+  — 编辑模型的模态/容量/图像预算并保存；只回写用户层与被改动的字段。
+- 「恢复路由默认值」on a single model.
+  — 单个模型的「恢复路由默认值」。
+- Provider discovery for a **catalog route** (`opencode-go`): answers locally with the whole catalog.
+  — **目录路由**（`opencode-go`）的供应商发现：本地返回完整目录。
+
+**Not verified yet** — these code paths exist and are guarded, but have not been exercised against a live target. They may not work:
+
+**尚未验证** —— 以下路径代码存在、也有防护，但没有对着真实目标跑过，**有可能不工作**：
+
+- **Endpoint discovery for a hand-declared route** (a local LM Studio server, a private relay). The code appends `/models` to that route's `baseURL`, sends the credential named by `apiKeyEnv`, bounds the wait to 15 s and reports every failure — but it has never been run against a live endpoint. An endpoint that does not speak an OpenAI-compatible `/models` listing will not work.
+  — **手工声明路由的端点发现**（本地 LM Studio、私有中转站）。代码会在该路由的 `baseURL` 后拼 `/models`、带上 `apiKeyEnv` 指名的凭据、等待上限 15 秒并报告每种失败——但**从未对着活的端点跑过**。不支持 OpenAI 兼容 `/models` 的端点无法工作。
+- **「重置为默认参数」across a whole group.** The per-model equivalent is verified; the group-wide write is not.
+  — **整组「重置为默认参数」**。单个模型的等价操作已验证，整组写入未验证。
+- **Any adapter other than `llm-deepseek` and `llm-pi-ai`.** The page understands only those two families.
+  — **除 `llm-deepseek` 和 `llm-pi-ai` 之外的适配器**。本页只认识这两个家族。
+
+If something does not work, please open an issue with the message the page shows (or the browser console error), the DSH version, and the structure of the relevant `settings.yaml` section — with keys redacted.
+
+如果有东西不工作，请开 issue 并附上页面显示的提示（或浏览器控制台报错）、DSH 版本，以及相关 `settings.yaml` 分节的结构（**密钥请打码**）。
 
 ## Acknowledgements / 致谢
 

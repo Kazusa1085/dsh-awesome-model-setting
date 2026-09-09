@@ -1,6 +1,6 @@
 {
   "name": "dsh-awesome-model-setting",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "DeepSeek Harness web plugin: a Model Capabilities settings page for declaring model input modalities, context window, output cap and image budgets without hand-editing settings.yaml.",
   "type": "module",
   "main": "src/index.js",

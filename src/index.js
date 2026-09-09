@@ -16,6 +16,7 @@
 export const name = 'dsh-awesome-model-setting'
 
 const ROUTE_PATH = '/plugins/dsh-awesome-model-setting/effective-models'
+const DISCOVER_PATH = '/plugins/dsh-awesome-model-setting/discover-models'
 const WEB_SERVER_KEYS = ['webServer', 'httpServer']
 
 /** Coerce one optional value to a string with a fallback. */
@@ -94,12 +95,71 @@ async function collectEffectiveModels(ctx) {
 }
 
 /**
+ * Ask the adapter which models one route can serve.
+ *
+ * For a route the adapter ships a catalog for, this answers from that catalog
+ * locally — no network and no credential. Only a hand-declared route (one the
+ * adapter knows nothing about) falls through to interrogating its endpoint.
+ *
+ * The reply deliberately carries no input modalities: the adapter does not
+ * expose them here. A model's real modalities become visible once it is served,
+ * which is what the client's "join" action is for.
+ *
+ * @param {import('@deepseek-ai/cordis').Context} ctx
+ * @param {string} settingsNs - namespace whose registered discovery serves this route.
+ * @param {string} provider - provider route key to interrogate.
+ * @returns {Promise<{ models: Array<object>, error?: string }>}
+ */
+async function discoverProviderModels(ctx, settingsNs, provider) {
+  const llm = ctx.get('llm')
+  if (llm === undefined) return { models: [], error: 'llm service is not mounted' }
+  if (provider.length === 0) return { models: [], error: 'missing provider' }
+
+  // A catalog route answers locally; a hand-declared route has no catalog, so
+  // the adapter needs that route's endpoint. It is read from the very settings
+  // section the user configured, so a local server (LM Studio, Ollama, a
+  // gateway) is interrogated at the URL already on file.
+  const request = { provider, signal: AbortSignal.timeout(15000) }
+  const settings = ctx.get('settings')
+  if (settings !== undefined) {
+    try {
+      const section = settings.get(settingsNs)
+      const providers = section === undefined || section === null ? undefined : section.providers
+      const profile = providers === undefined || providers === null ? undefined : providers[provider]
+      if (profile !== undefined && profile !== null) {
+        if (typeof profile.baseURL === 'string' && profile.baseURL.length > 0) request.baseURL = profile.baseURL
+        if (typeof profile.api === 'string' && profile.api.length > 0) request.api = profile.api
+      }
+    } catch (error) {
+      // An unreadable section only costs us the endpoint hint; the adapter will
+      // then report the missing baseURL itself.
+    }
+  }
+
+  try {
+    // Bound the wait instead of leaving the panel spinning on an unreachable host.
+    const models = await llm.discoverModels(settingsNs, request)
+    return {
+      models: models.map((model) => ({
+        id: String(model.id),
+        name: text(model.name, ''),
+        contextWindow: typeof model.contextWindow === 'number' ? model.contextWindow : null,
+        maxTokens: typeof model.maxTokens === 'number' ? model.maxTokens : null,
+      })),
+    }
+  } catch (error) {
+    return { models: [], error: error instanceof Error ? error.message : String(error) }
+  }
+}
+
+/**
  * Register the effective-models route once the web server is available.
  * @param {import('@deepseek-ai/cordis').Context} ctx
  * @param {object} config
  */
 export function apply(ctx, config = {}) {
   const routePath = config.routePath ?? ROUTE_PATH
+  const discoverPath = config.discoverPath ?? DISCOVER_PATH
 
   const respond = async (res) => {
     let body
@@ -107,6 +167,23 @@ export function apply(ctx, config = {}) {
       body = JSON.stringify(await collectEffectiveModels(ctx))
     } catch (error) {
       body = JSON.stringify({ providers: [], error: error instanceof Error ? error.message : String(error) })
+    }
+    res.writeHead(200, {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store',
+    })
+    res.end(body)
+  }
+
+  const respondDiscover = async (req, res) => {
+    const url = new URL(req.url ?? '/', 'http://localhost')
+    const provider = url.searchParams.get('provider') ?? ''
+    const settingsNs = url.searchParams.get('ns') ?? 'llm-pi-ai'
+    let body
+    try {
+      body = JSON.stringify(await discoverProviderModels(ctx, settingsNs, provider))
+    } catch (error) {
+      body = JSON.stringify({ models: [], error: error instanceof Error ? error.message : String(error) })
     }
     res.writeHead(200, {
       'content-type': 'application/json; charset=utf-8',
@@ -126,6 +203,11 @@ export function apply(ctx, config = {}) {
       path: routePath,
       handler: async (_req, res) => respond(res),
     }), 'dsh-awesome-model-setting: effective models route')
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: discoverPath,
+      handler: async (req, res) => respondDiscover(req, res),
+    }), 'dsh-awesome-model-setting: discover models route')
   }
 
   registerRoute()
