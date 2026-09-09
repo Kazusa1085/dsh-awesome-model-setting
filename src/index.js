@@ -43,6 +43,7 @@ async function collectEffectiveModels(ctx) {
       directory[id] = {
         displayName: text(entry.displayName, id),
         declared: entry.declared === true,
+        settingsNs: text(entry.settingsNs, ''),
       }
     }
   } catch (error) {
@@ -89,6 +90,30 @@ async function collectEffectiveModels(ctx) {
     } catch (error) {
       group.error = error instanceof Error ? error.message : String(error)
     }
+
+    // The adapter exposes a default output cap only for models whose entry
+    // declares one, so a catalog model listed as a bare `{ id }` comes back
+    // without it. For a route the adapter ships a catalog for, that value is
+    // available locally — fill the gap from the catalog. Hand-declared routes
+    // are skipped deliberately: asking one would mean a network call.
+    if (meta !== undefined && meta.declared === false && meta.settingsNs.length > 0
+      && group.models.some((row) => row.maxTokens === null)) {
+      try {
+        const catalog = await llm.discoverModels(meta.settingsNs, {
+          provider: id,
+          signal: AbortSignal.timeout(5000),
+        })
+        const catalogById = new Map(catalog.map((model) => [String(model.id), model]))
+        for (const row of group.models) {
+          if (row.maxTokens !== null) continue
+          const hit = catalogById.get(row.id)
+          if (hit !== undefined && typeof hit.maxTokens === 'number') row.maxTokens = hit.maxTokens
+        }
+      } catch (error) {
+        // No discovery registered for this namespace, or it failed: leave the gap.
+      }
+    }
+
     providers.push(group)
   }
   return { providers }
