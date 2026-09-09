@@ -145,7 +145,7 @@ Search by model id, display name or route name; filter by **全部 / 仅多模�
 - The plugin **never reads or writes your API keys**. It does not touch the credentials service at all.
   — 本插件**从不读写你的 API 密钥**，完全不接触凭据服务。
 - The host half registers exactly one **read-only** JSON route (`/plugins/dsh-awesome-model-setting/effective-models`) that reports effective model capabilities. It returns detached leaf data (ids, names, modality strings, numbers) and performs no writes and no network requests.
-  — Host 半只注册**一个只读** JSON 路由（`/plugins/dsh-awesome-model-setting/effective-models`），返回生效的模型能力。它只返回分离出的叶子数据（id、名称、模态字符串、数字），不写任何东西，也不发起任何网络请求。
+  — Host 侧只注册**一个只读** JSON 路由（`/plugins/dsh-awesome-model-setting/effective-models`），返回生效的模型能力。它只返回分离出的叶子数据（id、名称、模态字符串、数字），不写任何东西，也不发起任何网络请求。
 - All settings writes happen in the browser through DSH's own settings API, exactly as the shipped Models page does.
   — 所有设置写入都在浏览器里通过 DSH 自己的设置 API 完成，与官方「模型」页完全一致。
 - **We encourage you to audit the code before using it. / 我们鼓励你在使用前审计本插件代码。**
