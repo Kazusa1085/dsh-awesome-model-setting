@@ -175,6 +175,10 @@ This plugin was developed and checked against a local DSH install using the `web
   — 单个模型的「恢复路由默认值」。
 - Provider discovery for a **catalog route** (`opencode-go`): answers locally with the whole catalog.
   — **目录路由**（`opencode-go`）的供应商发现：本地返回完整目录。
+- Joining a discovered model writes a bare `{ id }` entry, and the model immediately reports the catalog's modalities.
+  — 加入发现到的模型只写入 `{ id }`，该模型随即报出目录声明的模态。
+- 「重置为默认参数」across a whole group: it strips only this page's fields from that group's entries, keeps the names, and leaves every other section untouched. On a route whose declared values already match the catalog, the effective values are unchanged afterwards — verified on `opencode-go` (16 models).
+  — 整组「重置为默认参数」：只清除该分组条目上本页管理的字段，保留名称，且**不触碰任何其它分节**。若条目里声明的值与目录本来就一致，重置后生效值不变——已在 `opencode-go`（16 个模型）上实测。
 
 **Not verified yet** — these code paths exist and are guarded, but have not been exercised against a live target. They may not work:
 
@@ -182,8 +186,8 @@ This plugin was developed and checked against a local DSH install using the `web
 
 - **Endpoint discovery for a hand-declared route** (a local LM Studio server, a private relay). The code appends `/models` to that route's `baseURL`, sends the credential named by `apiKeyEnv`, bounds the wait to 15 s and reports every failure — but it has never been run against a live endpoint. An endpoint that does not speak an OpenAI-compatible `/models` listing will not work.
   — **手工声明路由的端点发现**（本地 LM Studio、私有中转站）。代码会在该路由的 `baseURL` 后拼 `/models`、带上 `apiKeyEnv` 指名的凭据、等待上限 15 秒并报告每种失败——但**从未对着活的端点跑过**。不支持 OpenAI 兼容 `/models` 的端点无法工作。
-- **「重置为默认参数」across a whole group.** The per-model equivalent is verified; the group-wide write is not.
-  — **整组「重置为默认参数」**。单个模型的等价操作已验证，整组写入未验证。
+- **「重置为默认参数」on a route whose declared values differ from the catalog.** The mechanics are verified; what has not been exercised is a reset that actually changes an effective value.
+  — **在「声明值与目录不一致」的路由上重置**。机制已验证；尚未跑过的是「重置后生效值真的发生变化」的情况。
 - **Any adapter other than `llm-deepseek` and `llm-pi-ai`.** The page understands only those two families.
   — **除 `llm-deepseek` 和 `llm-pi-ai` 之外的适配器**。本页只认识这两个家族。
 
