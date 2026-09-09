@@ -1,0 +1,7 @@
+# Local development scratch space: design notes, drafts, screenshots.
+# Deliberately not part of the published package.
+feature/
+
+node_modules/
+*.log
+.DS_Store

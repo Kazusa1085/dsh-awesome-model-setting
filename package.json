@@ -1,0 +1,55 @@
+{
+  "name": "dsh-awesome-model-setting",
+  "version": "1.0.0",
+  "description": "DeepSeek Harness web plugin: a Model Capabilities settings page for declaring model input modalities, context window, output cap and image budgets without hand-editing settings.yaml.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/Kazusa1085/dsh-awesome-model-setting#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kazusa1085/dsh-awesome-model-setting.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Kazusa1085/dsh-awesome-model-setting/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "plugin",
+    "model",
+    "capabilities",
+    "settings",
+    "modalities",
+    "vision",
+    "context-window"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "react": "^18.2.0"
+  }
+}

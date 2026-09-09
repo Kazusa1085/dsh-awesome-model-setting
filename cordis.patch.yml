@@ -1,0 +1,9 @@
+# dsh-awesome-model-setting bundle patch: mount the Model Capabilities settings page.
+#
+# The host half registers one read-only JSON route that resolves the effective
+# (catalog-merged) capability of every registered provider model. The client
+# half renders a "模型能力 / Model Capabilities" page inside the settings panel.
+- insert:
+    - id: dsh-awesome-model-setting
+      name: dsh-awesome-model-setting
+      config: {}
